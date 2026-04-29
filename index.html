@@ -1,0 +1,341 @@
+import React, { useState } from &#39;react&#39;;
+import {
+Calculator,
+RotateCcw,
+Wind,
+Activity,
+DollarSign,
+Clock,
+Ruler,
+Settings,
+AlertTriangle,
+Droplet
+} from &#39;lucide-react&#39;;
+
+export default function App() {
+// Estado inicial del formulario
+const initialState = {
+hp: 50,
+hours: 6000,
+kwhCost: 800, // Costo promedio en COP
+pressureDrop: 15, // PSI de caída de presión estimada
+efficiency: 18, // kW / 100 CFM (Promedio estándar)
+leakPercentage: 20 // 20% es el promedio de fugas en la industria sin optimizar
+};
+
+const [formData, setFormData] = useState(initialState);
+const [results, setResults] = useState(null);
+
+// Manejador de cambios en los inputs
+
+const handleChange = (e) =&gt; {
+const { name, value } = e.target;
+setFormData({
+...formData,
+[name]: name === &#39;material&#39; ? value : parseFloat(value) || &#39;&#39;
+});
+};
+
+// Función principal de cálculo
+const calcularPerdidas = () =&gt; {
+// 1. Validaciones básicas
+if (!formData.hp) return;
+
+// 2. Cálculos de Capacidad
+const flowCFM = formData.hp * 4; // 1 HP = 4 CFM
+const eff = formData.efficiency || 18;
+
+// Energía base anual sin pérdidas adicionales
+const annualEnergyBase = (flowCFM / 100) * eff * formData.hours;
+
+// 3. Cálculo de Fugas
+const flowLeaks = flowCFM * (formData.leakPercentage / 100);
+const energyLeaks = (flowLeaks / 100) * eff * formData.hours;
+const costLeaks = energyLeaks * formData.kwhCost;
+
+// 4. Cálculo de Caída de Presión (Ingreso directo)
+const deltaP = formData.pressureDrop || 0;
+
+// Regla empírica: Cada 2 psi de caída de presión aumenta el consumo de energía en un 1%
+
+let penaltyPercent = (deltaP / 2) * 0.01;
+if (penaltyPercent &gt; 0.4) penaltyPercent = 0.4; // Tope de seguridad matemática al 40%
+
+const costPD = annualEnergyBase * penaltyPercent * formData.kwhCost;
+
+// 5. Establecer resultados
+setResults({
+cfm: flowCFM,
+deltaP: deltaP,
+costLeaks: costLeaks,
+costPD: costPD,
+totalCost: costLeaks + costPD
+});
+};
+
+const limpiarFormulario = () =&gt; {
+setFormData(initialState);
+setResults(null);
+};
+
+// Formateador de moneda colombiana
+const formatCOP = (value) =&gt; {
+return new Intl.NumberFormat(&#39;es-CO&#39;, {
+style: &#39;currency&#39;,
+currency: &#39;COP&#39;,
+maximumFractionDigits: 0
+}).format(value);
+};
+
+return (
+&lt;div className=&quot;min-h-screen bg-gray-100 font-sans text-gray-800 selection:bg-yellow-400
+selection:text-gray-900&quot;&gt;
+{/* Header Corporativo */}
+&lt;header className=&quot;bg-[#FFCC00] text-gray-900 shadow-md border-b-4 border-gray-900&quot;&gt;
+&lt;div className=&quot;max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between
+items-center&quot;&gt;
+&lt;div&gt;
+&lt;h1 className=&quot;text-3xl font-black uppercase tracking-tight flex items-center gap-2&quot;&gt;
+&lt;Wind className=&quot;w-8 h-8 font-bold&quot; /&gt;
+Kaeser Compresores
+&lt;/h1&gt;
+&lt;p className=&quot;text-sm font-semibold tracking-wide mt-1&quot;&gt;Expoindustrial Valle del
+Cauca&lt;/p&gt;
+&lt;/div&gt;
+&lt;div className=&quot;mt-4 md:mt-0 text-right hidden md:block&quot;&gt;
+&lt;h2 className=&quot;text-xl font-bold&quot;&gt;Calculadora de Eficiencia&lt;/h2&gt;
+&lt;p className=&quot;text-sm&quot;&gt;Auditoría de Aire Comprimido&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/header&gt;
+
+&lt;main className=&quot;max-w-6xl mx-auto px-4 py-8&quot;&gt;
+&lt;div className=&quot;grid grid-cols-1 lg:grid-cols-12 gap-8&quot;&gt;
+
+{/* Formulario de Entrada */}
+&lt;div className=&quot;lg:col-span-7 bg-white rounded-xl shadow-xl overflow-hidden border
+border-gray-200&quot;&gt;
+&lt;div className=&quot;bg-gray-900 text-white px-6 py-4 flex items-center gap-2&quot;&gt;
+&lt;Settings className=&quot;w-5 h-5 text-yellow-400&quot; /&gt;
+
+&lt;h3 className=&quot;text-lg font-bold&quot;&gt;Parámetros del Sistema&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;div className=&quot;p-6 space-y-6&quot;&gt;
+&lt;div className=&quot;grid grid-cols-1 md:grid-cols-2 gap-6&quot;&gt;
+{/* Potencia */}
+&lt;div&gt;
+&lt;label className=&quot;block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2&quot;&gt;
+&lt;Activity className=&quot;w-4 h-4 text-blue-600&quot; /&gt; Potencia Instalada (HP)
+&lt;/label&gt;
+&lt;input
+type=&quot;number&quot; name=&quot;hp&quot; value={formData.hp} onChange={handleChange}
+className=&quot;w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-
+yellow-400 focus:border-yellow-400 outline-none transition-all&quot;
+placeholder=&quot;Ej. 50&quot;
+/&gt;
+&lt;p className=&quot;text-xs text-gray-500 mt-1&quot;&gt;
+Generación estimada: &lt;span className=&quot;font-bold text-gray-800&quot;&gt;{formData.hp ?
+formData.hp * 4 : 0} CFM&lt;/span&gt;
+&lt;/p&gt;
+&lt;/div&gt;
+
+{/* Horas */}
+&lt;div&gt;
+&lt;label className=&quot;block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2&quot;&gt;
+&lt;Clock className=&quot;w-4 h-4 text-green-600&quot; /&gt; Horas de Operación / Año
+&lt;/label&gt;
+&lt;input
+type=&quot;number&quot; name=&quot;hours&quot; value={formData.hours} onChange={handleChange}
+
+className=&quot;w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-
+yellow-400 focus:border-yellow-400 outline-none transition-all&quot;
+placeholder=&quot;Ej. 6000&quot;
+/&gt;
+&lt;/div&gt;
+
+{/* Costo Energía */}
+&lt;div&gt;
+&lt;label className=&quot;block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2&quot;&gt;
+&lt;DollarSign className=&quot;w-4 h-4 text-yellow-600&quot; /&gt; Costo Energía ($/kWh)
+&lt;/label&gt;
+&lt;input
+type=&quot;number&quot; name=&quot;kwhCost&quot; value={formData.kwhCost}
+onChange={handleChange}
+className=&quot;w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-
+yellow-400 focus:border-yellow-400 outline-none transition-all&quot;
+placeholder=&quot;Ej. 800&quot;
+/&gt;
+&lt;/div&gt;
+
+{/* Eficiencia */}
+&lt;div&gt;
+&lt;label className=&quot;block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2&quot;&gt;
+&lt;Settings className=&quot;w-4 h-4 text-gray-600&quot; /&gt; Eficiencia (kW/100 CFM)
+&lt;/label&gt;
+&lt;input
+type=&quot;number&quot; name=&quot;efficiency&quot; value={formData.efficiency}
+onChange={handleChange}
+className=&quot;w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-
+yellow-400 focus:border-yellow-400 outline-none transition-all&quot;
+placeholder=&quot;Opcional. Ej. 18&quot;
+
+/&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+
+&lt;hr className=&quot;border-gray-200&quot; /&gt;
+
+&lt;div className=&quot;bg-white p-4 rounded-lg border border-gray-200 mb-6&quot;&gt;
+{/* Caída de Presión */}
+&lt;div&gt;
+&lt;label className=&quot;block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2&quot;&gt;
+&lt;Activity className=&quot;w-4 h-4 text-orange-600&quot; /&gt; Caída de Presión Estimada (PSI)
+&lt;/label&gt;
+&lt;input
+type=&quot;number&quot; name=&quot;pressureDrop&quot; value={formData.pressureDrop}
+onChange={handleChange}
+className=&quot;w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-
+yellow-400 focus:border-yellow-400 outline-none transition-all bg-gray-50&quot;
+placeholder=&quot;Ej. 15&quot;
+/&gt;
+&lt;p className=&quot;text-xs text-gray-500 mt-2&quot;&gt;
+Ingrese la caída de presión entre el cuarto de compresores y el punto de uso.
+&lt;strong&gt;Regla:&lt;/strong&gt; Cada 2 PSI de caída representan ~1% de energía extra consumida.
+&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+
+{/* Slider de Fugas */}
+&lt;div className=&quot;bg-gray-50 p-4 rounded-lg border border-gray-200&quot;&gt;
+&lt;label className=&quot;flex justify-between items-center text-sm font-bold text-gray-700 mb-
+4&quot;&gt;
+
+&lt;span className=&quot;flex items-center gap-2&quot;&gt;
+&lt;Wind className=&quot;w-4 h-4 text-teal-600&quot; /&gt; Nivel de Fugas Estimado
+&lt;/span&gt;
+&lt;span className=&quot;bg-white px-3 py-1 rounded shadow-sm border border-gray-200 text-
+lg&quot;&gt;
+{formData.leakPercentage}%
+&lt;/span&gt;
+&lt;/label&gt;
+&lt;input
+type=&quot;range&quot; name=&quot;leakPercentage&quot; min=&quot;0&quot; max=&quot;50&quot; step=&quot;1&quot;
+value={formData.leakPercentage} onChange={handleChange}
+className=&quot;w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-
+yellow-500&quot;
+/&gt;
+&lt;div className=&quot;flex justify-between text-xs text-gray-500 mt-2&quot;&gt;
+&lt;span&gt;Planta Optimizada (0-5%)&lt;/span&gt;
+&lt;span&gt;Promedio Industria (20-30%)&lt;/span&gt;
+&lt;span&gt;Estado Crítico (50%)&lt;/span&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+
+{/* Botones de Acción */}
+&lt;div className=&quot;flex gap-4 pt-4&quot;&gt;
+&lt;button
+onClick={calcularPerdidas}
+className=&quot;flex-1 bg-[#FFCC00] hover:bg-yellow-500 text-gray-900 font-bold py-4 px-6
+rounded-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 text-lg
+uppercase tracking-wide&quot;
+&gt;
+&lt;Calculator className=&quot;w-6 h-6&quot; /&gt; Calcular Pérdidas
+
+&lt;/button&gt;
+&lt;button
+onClick={limpiarFormulario}
+className=&quot;bg-gray-800 hover:bg-gray-900 text-white font-bold py-4 px-6 rounded-lg
+shadow-md transition-all flex items-center justify-center&quot;
+title=&quot;Limpiar datos&quot;
+&gt;
+&lt;RotateCcw className=&quot;w-6 h-6&quot; /&gt;
+&lt;/button&gt;
+&lt;/div&gt;
+
+&lt;/div&gt;
+&lt;/div&gt;
+
+{/* Panel de Resultados */}
+&lt;div className=&quot;lg:col-span-5&quot;&gt;
+{results ? (
+&lt;div className=&quot;bg-white rounded-xl shadow-xl overflow-hidden border-2 border-red-
+500 animate-in fade-in slide-in-from-bottom-4 duration-500&quot;&gt;
+&lt;div className=&quot;bg-red-600 text-white px-6 py-5 flex items-center gap-3&quot;&gt;
+&lt;AlertTriangle className=&quot;w-7 h-7&quot; /&gt;
+&lt;h3 className=&quot;text-xl font-black uppercase tracking-wide&quot;&gt;Impacto Financiero
+Anual&lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;div className=&quot;p-6&quot;&gt;
+&lt;p className=&quot;text-gray-600 text-center mb-6 text-sm font-medium&quot;&gt;
+Su sistema produce &lt;span className=&quot;font-bold text-gray-
+900&quot;&gt;{results.cfm.toFixed(0)} CFM&lt;/span&gt;.
+El costo total asociado a las ineficiencias de su red es:
+
+&lt;/p&gt;
+
+&lt;div className=&quot;text-center bg-red-50 rounded-xl py-6 border border-red-100 mb-6
+shadow-inner&quot;&gt;
+&lt;span className=&quot;block text-red-800 font-bold mb-1 uppercase text-sm tracking-
+wider&quot;&gt;Total Dinero Perdido / Año&lt;/span&gt;
+&lt;span className=&quot;text-4xl md:text-5xl font-black text-red-600 tracking-tighter&quot;&gt;
+{formatCOP(results.totalCost)}
+&lt;/span&gt;
+&lt;/div&gt;
+
+&lt;div className=&quot;space-y-4&quot;&gt;
+&lt;div className=&quot;bg-gray-50 p-4 rounded-lg flex justify-between items-center border
+border-gray-100&quot;&gt;
+&lt;div&gt;
+&lt;span className=&quot;block font-bold text-gray-800 flex items-center gap-2&quot;&gt;
+&lt;Wind className=&quot;w-4 h-4 text-teal-600&quot; /&gt; Pérdidas por Fugas
+&lt;/span&gt;
+&lt;span className=&quot;text-xs text-gray-500&quot;&gt;Al {formData.leakPercentage}% de
+volumen&lt;/span&gt;
+&lt;/div&gt;
+&lt;span className=&quot;font-bold text-lg text-gray-
+700&quot;&gt;{formatCOP(results.costLeaks)}&lt;/span&gt;
+&lt;/div&gt;
+
+&lt;div className=&quot;bg-gray-50 p-4 rounded-lg flex justify-between items-center border
+border-gray-100&quot;&gt;
+&lt;div&gt;
+&lt;span className=&quot;block font-bold text-gray-800 flex items-center gap-2&quot;&gt;
+&lt;Activity className=&quot;w-4 h-4 text-orange-500&quot; /&gt; Fricción / Caída Presión
+&lt;/span&gt;
+
+&lt;span className=&quot;text-xs text-gray-500&quot;&gt;Caída est: {results.deltaP.toFixed(2)}
+psi&lt;/span&gt;
+&lt;/div&gt;
+&lt;span className=&quot;font-bold text-lg text-gray-
+700&quot;&gt;{formatCOP(results.costPD)}&lt;/span&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+
+&lt;div className=&quot;mt-8 bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-
+center&quot;&gt;
+&lt;p className=&quot;text-sm text-yellow-800 font-bold mb-2&quot;&gt;¡Kaeser puede ayudarle a
+recuperar este dinero!&lt;/p&gt;
+&lt;p className=&quot;text-xs text-yellow-700&quot;&gt;Solicite una &lt;strong&gt;Auditoría de Demanda
+de Aire (ADA)&lt;/strong&gt; con nuestros ingenieros hoy mismo en el stand.&lt;/p&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+&lt;/div&gt;
+) : (
+&lt;div className=&quot;h-full bg-gray-200 rounded-xl border-2 border-dashed border-gray-300
+flex flex-col items-center justify-center p-8 text-center min-h-[400px]&quot;&gt;
+&lt;Calculator className=&quot;w-16 h-16 text-gray-400 mb-4 opacity-50&quot; /&gt;
+&lt;h3 className=&quot;text-xl font-bold text-gray-500 mb-2&quot;&gt;Resultados del Análisis&lt;/h3&gt;
+&lt;p className=&quot;text-gray-400 text-sm&quot;&gt;Ingrese los datos de su planta y presione &quot;Calcular
+Pérdidas&quot; para ver el impacto financiero anual.&lt;/p&gt;
+&lt;/div&gt;
+)}
+&lt;/div&gt;
+
+&lt;/div&gt;
+&lt;/main&gt;
+&lt;/div&gt;
+
+);
+}
